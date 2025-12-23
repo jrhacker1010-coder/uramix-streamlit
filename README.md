@@ -264,7 +264,7 @@ URAMix is designed for hackathons and community-driven development. Feel free to
 
 For questions or support:
 - **Email**: support@uramix.com
-- **Phone**: +91-XXXX-XXXXXX
+- **Phone**: +91-8438386610
 - **Available**: 24/7
 
 ---

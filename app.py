@@ -1,1273 +1,805 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-import datetime
-import random
 import qrcode
-from PIL import Image, ImageDraw, ImageFont
-import io
+from io import BytesIO
 import base64
+from datetime import datetime, timedelta
+import random
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
-# ============================================
-# PAGE CONFIGURATION
-# ============================================
+# Page Configuration
 st.set_page_config(
-    page_title="URAMix - Waste to Value",
-    page_icon="🌱",
+    page_title="URAMix - Waste to Wealth",
+    page_icon="♻️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# ============================================
-# CUSTOM CSS - GREEN & WHITE ECO THEME
-# ============================================
+# Custom CSS for Green Eco Theme
 st.markdown("""
 <style>
     .main {
-        background-color: #f5fdf5;
+        background-color: #f0f8f0;
     }
-    
     .stButton>button {
-        background: linear-gradient(135deg, #4CAF50 0%, #2e7d32 100%);
+        background-color: #28a745;
         color: white;
-        border-radius: 12px;
-        padding: 12px 28px;
-        border: none;
-        font-weight: 600;
-        transition: all 0.3s;
-        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
-    }
-    
-    .stButton>button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4);
-    }
-    
-    .hero-section {
-        background: linear-gradient(135deg, #2e7d32 0%, #66bb6a 100%);
-        padding: 40px;
-        border-radius: 20px;
-        color: white;
-        text-align: center;
-        margin-bottom: 30px;
-        box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-    }
-    
-    .tagline {
-        font-size: 32px;
-        font-weight: bold;
-        color: #2e7d32;
-        text-align: center;
-        margin: 20px 0;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
-        animation: fadeIn 1.5s;
-    }
-    
-    .problem-card {
-        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
-        color: white;
-        padding: 25px;
-        border-radius: 15px;
-        margin: 15px 0;
-        box-shadow: 0 6px 15px rgba(0,0,0,0.2);
-        animation: slideIn 0.8s ease-out;
-        transition: transform 0.3s;
-    }
-    
-    .problem-card:hover {
-        transform: scale(1.02);
-    }
-    
-    .eco-quote {
-        background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
-        padding: 25px;
-        border-left: 6px solid #4CAF50;
         border-radius: 10px;
-        margin: 20px 0;
-        font-size: 20px;
-        color: #1b5e20;
-        font-weight: 600;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        padding: 10px 24px;
+        border: none;
+        font-weight: bold;
     }
-    
+    .stButton>button:hover {
+        background-color: #218838;
+    }
     .metric-card {
-        background: white;
-        padding: 25px;
-        border-radius: 15px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        text-align: center;
-        transition: transform 0.3s;
-    }
-    
-    .metric-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-    }
-    
-    .product-card {
-        background: white;
-        border: 2px solid #e0e0e0;
-        border-radius: 15px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 20px;
-        margin: 15px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        transition: all 0.3s;
+        border-radius: 15px;
+        color: white;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
-    
-    .product-card:hover {
-        border-color: #4CAF50;
-        transform: translateY(-5px);
-        box-shadow: 0 8px 20px rgba(76, 175, 80, 0.3);
+    .problem-card {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        border-left: 5px solid #28a745;
+        margin: 10px 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        animation: slideIn 0.5s ease-out;
     }
-    
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-    
     @keyframes slideIn {
-        from { 
+        from {
             opacity: 0;
-            transform: translateX(-30px);
+            transform: translateX(-20px);
         }
-        to { 
+        to {
             opacity: 1;
             transform: translateX(0);
         }
     }
-    
-    .wallet-display {
-        background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+    .product-card {
+        background: white;
         padding: 20px;
         border-radius: 15px;
-        color: #1b5e20;
-        font-weight: bold;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         text-align: center;
-        box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+        transition: transform 0.3s;
+    }
+    .product-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    }
+    .hero-text {
+        font-size: 3em;
+        font-weight: bold;
+        color: #28a745;
+        text-align: center;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+    }
+    .sub-hero {
+        font-size: 1.5em;
+        color: #555;
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    .dustbin-container {
+        background: linear-gradient(to bottom, #e8f5e9 0%, #c8e6c9 100%);
+        border-radius: 15px;
+        padding: 30px;
+        margin: 20px 0;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .dustbin-fill {
+        background: linear-gradient(to top, #4caf50 0%, #81c784 100%);
+        border-radius: 10px;
+        transition: height 0.5s ease;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# ============================================
-# SESSION STATE INITIALIZATION
-# ============================================
+# Initialize Session State
 def init_session_state():
-    """Initialize all session state variables"""
     if 'users' not in st.session_state:
         st.session_state.users = {}
-    
     if 'logged_in' not in st.session_state:
         st.session_state.logged_in = False
-    
     if 'current_user' not in st.session_state:
         st.session_state.current_user = None
-    
     if 'is_admin' not in st.session_state:
         st.session_state.is_admin = False
-    
-    if 'waste_bookings' not in st.session_state:
-        st.session_state.waste_bookings = []
-    
+    if 'total_credits_issued' not in st.session_state:
+        st.session_state.total_credits_issued = 0
+    if 'daily_credits' not in st.session_state:
+        st.session_state.daily_credits = {}
     if 'qr_codes' not in st.session_state:
         st.session_state.qr_codes = {}
-    
-    if 'manure_stock' not in st.session_state:
-        st.session_state.manure_stock = 500  # URAM Count
-    
+    if 'feedbacks' not in st.session_state:
+        st.session_state.feedbacks = []
+    if 'total_manure' not in st.session_state:
+        st.session_state.total_manure = 1000  # Initial stock in kg
     if 'manure_price' not in st.session_state:
-        st.session_state.manure_price = 12  # ₹ per kg
-    
+        st.session_state.manure_price = 50  # Price per kg
     if 'manure_sales' not in st.session_state:
         st.session_state.manure_sales = []
-    
-    if 'feedback_list' not in st.session_state:
-        st.session_state.feedback_list = []
-    
-    if 'daily_credits_data' not in st.session_state:
-        st.session_state.daily_credits_data = []
+    if 'dustbin_fill_level' not in st.session_state:
+        st.session_state.dustbin_fill_level = 0
 
 init_session_state()
 
-# ============================================
-# HELPER FUNCTIONS
-# ============================================
-
-def calculate_credits(waste_type):
-    """
-    Calculate credits based on waste type (NOT quantity)
-    Organic → Higher credits
-    Inorganic → Lower credits
-    """
-    if waste_type == "Organic":
-        return 150  # Higher credits for organic
-    else:  # Inorganic
-        return 100  # Lower credits for inorganic
-
-def credits_to_rupees(credits):
-    """Convert credits to rupees: 1 credit = ₹0.05, 20 credits = ₹1"""
-    return round(credits * 0.05, 2)
-
-def rupees_to_credits(rupees):
-    """Convert rupees to credits: ₹1 = 20 credits"""
-    return int(rupees * 20)
-
-def generate_qr_code(booking_id, waste_type, credits):
-    """Generate QR code for booking"""
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=10,
-        border=4,
-    )
-    
-    qr_data = f"URAMIX|{booking_id}|{waste_type}|{credits}"
-    qr.add_data(qr_data)
-    qr.make(fit=True)
-    
-    img = qr.make_image(fill_color="#2e7d32", back_color="white")
-    return img
-
-def send_feedback_email(user_email, feedback_text):
-    """
-    Mock function to send feedback via email
-    In production, use actual SMTP:
-    
-    import smtplib
-    from email.mime.text import MIMEText
-    
-    sender = "uramix@gmail.com"
-    recipient = "admin@uramix.com"
-    msg = MIMEText(feedback_text)
-    msg['Subject'] = f'Feedback from {user_email}'
-    msg['From'] = sender
-    msg['To'] = recipient
-    
-    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
-        smtp.login(sender, 'app_password')
-        smtp.send_message(msg)
-    """
-    # Store feedback in session state
-    st.session_state.feedback_list.append({
-        'email': user_email,
-        'feedback': feedback_text,
-        'timestamp': datetime.datetime.now()
-    })
-    return True
-
-# ============================================
-# AUTHENTICATION FUNCTIONS
-# ============================================
-
+# Authentication Functions
 def signup_user(email, password):
-    """Create new user account with referral bonus"""
     if email in st.session_state.users:
-        return False, "Email already exists"
-    
+        return False, "Email already exists!"
     st.session_state.users[email] = {
         'password': password,
-        'credits': 20,  # Referral bonus
-        'bookings': [],
-        'uram_count': 0,  # Manure purchased count
-        'transactions': []
+        'credits': 0,
+        'waste_submissions': [],
+        'manure_purchased': 0,
+        'referral_used': False
     }
-    return True, "Account created successfully!"
+    return True, "Signup successful! Please login."
 
 def login_user(email, password):
-    """Login user or admin"""
-    # Admin login
     if email == "admin" and password == "12345":
         st.session_state.logged_in = True
         st.session_state.is_admin = True
         st.session_state.current_user = "admin"
-        return True, "Admin login successful"
+        return True, "Admin login successful!"
     
-    # User login
     if email in st.session_state.users:
         if st.session_state.users[email]['password'] == password:
             st.session_state.logged_in = True
             st.session_state.is_admin = False
             st.session_state.current_user = email
-            return True, "Login successful"
-        else:
-            return False, "Incorrect password"
-    
-    return False, "Email not found"
+            return True, "Login successful!"
+        return False, "Invalid password!"
+    return False, "User not found!"
 
-def logout_user():
-    """Logout current user"""
+def logout():
     st.session_state.logged_in = False
-    st.session_state.current_user = None
     st.session_state.is_admin = False
+    st.session_state.current_user = None
 
-# ============================================
-# LOGIN & SIGNUP PAGE
-# ============================================
-
-def login_signup_page():
-    """Authentication page"""
+# QR Code Generation
+def generate_qr_code(data):
+    qr = qrcode.QRCode(version=1, box_size=10, border=5)
+    qr.add_data(data)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
     
-    # Hero header
-    st.markdown("""
-    <div class='hero-section'>
-        <h1 style='font-size: 48px; margin: 0;'>🌱 URAMix</h1>
-        <p style='font-size: 28px; margin: 10px 0;'>♻️ WASTE TO VALUE ♻️</p>
-        <p style='font-size: 18px; opacity: 0.9;'>Transforming India's Waste Crisis into Opportunity</p>
-    </div>
-    """, unsafe_allow_html=True)
+    buffer = BytesIO()
+    img.save(buffer, format="PNG")
+    buffer.seek(0)
+    img_str = base64.b64encode(buffer.getvalue()).decode()
+    return img_str
+
+# Credit Calculation
+def calculate_credits(waste_type, quantity):
+    if waste_type == "Organic Waste":
+        base_credits = 50  # Higher for organic
+    else:
+        base_credits = 30  # Lower for inorganic
+    
+    # Credits don't depend directly on quantity, but we add a small bonus
+    quantity_bonus = min(quantity * 2, 20)  # Max 20 bonus credits
+    total_credits = base_credits + quantity_bonus
+    return int(total_credits)
+
+# Email Feedback Function
+def send_feedback_email(user_email, feedback_text):
+    try:
+        # Demo SMTP configuration (replace with actual credentials)
+        sender_email = "your_email@gmail.com"
+        sender_password = "your_app_password"
+        receiver_email = "admin@uramix.com"
+        
+        msg = MIMEMultipart()
+        msg['From'] = sender_email
+        msg['To'] = receiver_email
+        msg['Subject'] = f"URAMix Feedback from {user_email}"
+        
+        body = f"User: {user_email}\n\nFeedback:\n{feedback_text}"
+        msg.attach(MIMEText(body, 'plain'))
+        
+        # Uncomment to actually send email
+        # server = smtplib.SMTP('smtp.gmail.com', 587)
+        # server.starttls()
+        # server.login(sender_email, sender_password)
+        # server.send_message(msg)
+        # server.quit()
+        
+        return True
+    except Exception as e:
+        return False
+
+# Login/Signup Page
+def auth_page():
+    st.markdown('<p class="hero-text">♻️ URAMix</p>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-hero">Waste to Wealth | Clean India Mission</p>', unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        tab1, tab2 = st.tabs(["🔑 Login", "✨ Sign Up"])
+        tab1, tab2 = st.tabs(["Login", "Signup"])
         
         with tab1:
-            st.subheader("Welcome Back!")
-            
-            email = st.text_input("Email Address", key="login_email", placeholder="Enter your email")
-            password = st.text_input("Password", type="password", key="login_pass", placeholder="Enter password")
+            st.subheader("🔐 Login")
+            email = st.text_input("Email / Username", key="login_email")
+            password = st.text_input("Password", type="password", key="login_pass")
             
             col_a, col_b = st.columns(2)
-            
             with col_a:
-                if st.button("🚀 Login", use_container_width=True):
-                    if email and password:
-                        success, message = login_user(email, password)
-                        if success:
-                            st.success(message)
-                            st.rerun()
-                        else:
-                            st.error(message)
+                if st.button("Login", use_container_width=True):
+                    success, message = login_user(email, password)
+                    if success:
+                        st.success(message)
+                        st.rerun()
                     else:
-                        st.warning("Please fill all fields")
+                        st.error(message)
             
             with col_b:
-                if st.button("🔐 Google Sign-In (Demo)", use_container_width=True):
-                    demo_email = "demo@google.com"
-                    if demo_email not in st.session_state.users:
-                        signup_user(demo_email, "demo123")
-                    login_user(demo_email, "demo123")
-                    st.success("Google Sign-In successful!")
-                    st.rerun()
+                if st.button("🔍 Sign in with Google (Demo)", use_container_width=True):
+                    st.info("Google Sign-In Demo Mode")
         
         with tab2:
-            st.subheader("Join the Green Revolution!")
+            st.subheader("📝 Signup")
+            new_email = st.text_input("Email", key="signup_email")
+            new_password = st.text_input("Password", type="password", key="signup_pass")
+            confirm_password = st.text_input("Confirm Password", type="password", key="confirm_pass")
             
-            new_email = st.text_input("Email Address", key="signup_email", placeholder="your@email.com")
-            new_pass = st.text_input("Password", type="password", key="signup_pass", placeholder="Create password")
-            confirm_pass = st.text_input("Confirm Password", type="password", placeholder="Re-enter password")
-            
-            if st.button("🌟 Create Account", use_container_width=True):
-                if not new_email or not new_pass:
-                    st.warning("Please fill all fields")
-                elif new_pass != confirm_pass:
-                    st.error("Passwords don't match")
-                elif len(new_pass) < 6:
-                    st.error("Password must be at least 6 characters")
+            if st.button("Create Account", use_container_width=True):
+                if new_password != confirm_password:
+                    st.error("Passwords don't match!")
+                elif len(new_password) < 4:
+                    st.error("Password too short!")
                 else:
-                    success, message = signup_user(new_email, new_pass)
+                    success, message = signup_user(new_email, new_password)
                     if success:
-                        st.success(f"{message} You got 20 referral credits! 🎉")
-                        st.balloons()
+                        st.success(message)
                     else:
                         st.error(message)
 
-# ============================================
-# HOME PAGE
-# ============================================
-
+# Home Page
 def home_page():
-    """Main home page with problem statement and metrics"""
+    # Hero Section
+    st.markdown('<p class="hero-text">🌍 Welcome to URAMix</p>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-hero">Transform Waste into Wealth | Clean India Initiative</p>', unsafe_allow_html=True)
     
-    # Logo and tagline
-    st.markdown("<h1 style='text-align: center; color: #2e7d32; font-size: 48px;'>🌱 URAMix</h1>", unsafe_allow_html=True)
-    st.markdown("<p class='tagline'>♻️ WASTE TO VALUE ♻️</p>", unsafe_allow_html=True)
+    # Hero Images
+    col1, col2 = st.columns(2)
+    with col1:
+        st.image("https://via.placeholder.com/400x300/28a745/ffffff?text=Smart+Dustbin", use_container_width=True)
+    with col2:
+        st.image("https://via.placeholder.com/400x300/8bc34a/ffffff?text=Natural+Manure", use_container_width=True)
     
-    # Get user data
-    user_data = st.session_state.users.get(st.session_state.current_user, {})
-    credits = user_data.get('credits', 0)
+    # Dynamic Eco Quote
+    user = st.session_state.users.get(st.session_state.current_user, {})
+    reduction_percent = min(user.get('credits', 0) * 0.1, 100)
     
-    # Dynamic eco quote
-    reduction_percentage = round(credits * 0.08, 2)
     st.markdown(f"""
-    <div class='eco-quote'>
-        🌍 You helped reduce landfill emissions by {reduction_percentage}% today!<br>
-        Your eco-credits increased! Keep making a difference! 🌱
+    <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                padding: 30px; border-radius: 15px; color: white; text-align: center; margin: 30px 0;'>
+        <h2>🌱 You helped reduce landfill emissions by {reduction_percent:.1f}% today!</h2>
+        <p style='font-size: 1.2em;'>Your eco credits increased! Keep going! 🌍</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Hero images section
-    col1, col2, col3 = st.columns([1, 1, 1])
+    # Problem Statements
+    st.markdown("### 🚨 Real-World Problems We're Solving")
     
-    with col1:
-        st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
-        st.markdown("### 🗑️ Waste Collection")
-        st.image("https://via.placeholder.com/250x200/4CAF50/FFFFFF?text=Dustbin", use_container_width=True)
-        st.write("Submit your segregated waste")
-        st.markdown("</div>", unsafe_allow_html=True)
+    problems = [
+        {"icon": "🗑️", "title": "Overflowing Bins", "desc": "People dump waste early because bins fill before collection"},
+        {"icon": "⏰", "title": "Irregular Collection", "desc": "Unpredictable garbage collection schedules"},
+        {"icon": "💰", "title": "Costly Manure", "desc": "Natural manure is expensive and unaffordable for farmers"},
+        {"icon": "🌾", "title": "Farmer Crisis", "desc": "Small farmers can't compete with big manure corporations"}
+    ]
     
-    with col2:
-        st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
-        st.markdown("### ⭐ Earn Credits")
-        st.image("https://via.placeholder.com/250x200/FFC107/FFFFFF?text=Credits", use_container_width=True)
-        st.write("Get rewarded for segregation")
-        st.markdown("</div>", unsafe_allow_html=True)
+    cols = st.columns(2)
+    for idx, problem in enumerate(problems):
+        with cols[idx % 2]:
+            st.markdown(f"""
+            <div class='problem-card'>
+                <h3>{problem['icon']} {problem['title']}</h3>
+                <p>{problem['desc']}</p>
+            </div>
+            """, unsafe_allow_html=True)
     
-    with col3:
-        st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
-        st.markdown("### 🌾 Buy Manure")
-        st.image("https://via.placeholder.com/250x200/8BC34A/FFFFFF?text=Manure", use_container_width=True)
-        st.write("Affordable natural fertilizer")
-        st.markdown("</div>", unsafe_allow_html=True)
+    # Mission Statement
+    st.markdown("### ✨ Our Mission")
+    missions = [
+        "🇮🇳 Make India Clean",
+        "♻️ Reduce Landfills",
+        "🔄 Encourage Waste Segregation",
+        "🌿 Convert Waste to Affordable Manure",
+        "💳 Reward Users with Credits & Money"
+    ]
     
-    st.markdown("---")
+    for mission in missions:
+        st.markdown(f"**{mission}**")
+
+# Dashboard Page
+def dashboard_page():
+    user = st.session_state.users[st.session_state.current_user]
     
-    # Problem statement cards (animated)
-    st.markdown("## 💡 Problems We Solve")
+    st.title("📊 Your Dashboard")
     
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("""
-        <div class='problem-card'>
-            <h3>🚮 Waste Management Crisis</h3>
-            <ul style='font-size: 16px; line-height: 1.8;'>
-                <li>People dump waste early - bins fill before collection</li>
-                <li>Irregular garbage collection schedules</li>
-                <li>No incentive for proper waste segregation</li>
-                <li>Landfills overflowing across Indian cities</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown("""
-        <div class='problem-card'>
-            <h3>🌾 Farming Challenges</h3>
-            <ul style='font-size: 16px; line-height: 1.8;'>
-                <li>Natural manure is expensive and unaffordable</li>
-                <li>Small farmers can't compete with big companies</li>
-                <li>Chemical fertilizers harm soil health</li>
-                <li>Lack of affordable organic alternatives</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    st.markdown("---")
-    
-    # User dashboard metrics
-    st.markdown("## 📊 Your Dashboard")
-    
+    # Metrics
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
-        st.metric("⭐ Your Credits", user_data.get('credits', 0))
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class='metric-card'>
+            <h2>{user['credits']}</h2>
+            <p>Total Credits</p>
+        </div>
+        """, unsafe_allow_html=True)
     
     with col2:
-        st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
-        rupees = credits_to_rupees(user_data.get('credits', 0))
-        st.metric("💰 Wallet Value", f"₹{rupees}")
-        st.markdown("</div>", unsafe_allow_html=True)
+        rupees = user['credits'] * 0.05
+        st.markdown(f"""
+        <div class='metric-card'>
+            <h2>₹{rupees:.2f}</h2>
+            <p>Wallet Balance</p>
+        </div>
+        """, unsafe_allow_html=True)
     
     with col3:
-        st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
-        st.metric("📦 Waste Submitted", len(user_data.get('bookings', [])))
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class='metric-card'>
+            <h2>{len(user['waste_submissions'])}</h2>
+            <p>Waste Submissions</p>
+        </div>
+        """, unsafe_allow_html=True)
     
     with col4:
-        st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
-        st.metric("🌾 URAM Count", user_data.get('uram_count', 0))
-        st.markdown("</div>", unsafe_allow_html=True)
-    
-    # Platform impact
-    st.markdown("---")
-    st.markdown("## 🌍 Platform Impact")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    total_users = len(st.session_state.users)
-    total_bookings = len(st.session_state.waste_bookings)
-    total_credits = sum([u.get('credits', 0) for u in st.session_state.users.values()])
-    
-    col1.metric("👥 Total Users", total_users)
-    col2.metric("♻️ Waste Collections", total_bookings)
-    col3.metric("⭐ Credits Issued", total_credits)
-    col4.metric("🌾 Manure Stock", f"{st.session_state.manure_stock} kg")
-
-# ============================================
-# WASTE SUBMISSION PAGE
-# ============================================
-
-def waste_submission_page():
-    """User waste submission page"""
-    
-    st.title("♻️ Submit Your Waste")
-    
-    user_data = st.session_state.users[st.session_state.current_user]
-    
-    # Wallet display
-    st.markdown(f"""
-    <div class='wallet-display'>
-        <h3>💳 Your Wallet</h3>
-        <p style='font-size: 24px; margin: 10px 0;'>
-            ⭐ {user_data['credits']} Credits = ₹{credits_to_rupees(user_data['credits'])}
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("---")
-    
-    # Waste submission form
-    st.subheader("📝 Book Waste Collection")
-    
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        waste_type = st.selectbox(
-            "🗑️ Select Waste Type",
-            ["Organic", "Inorganic"],
-            help="Choose the type of waste you want to submit"
-        )
-        
-        # Show credits info
-        credits_earned = calculate_credits(waste_type)
-        
-        st.info(f"""
-        **Credit Information:**
-        
-        🌿 **Organic Waste:** 150 credits
-        
-        ♻️ **Inorganic Waste:** 100 credits
-        
-        **You will earn:** ⭐ {credits_earned} credits
-        """)
-    
-    with col2:
-        address = st.text_area(
-            "📍 Pickup Address",
-            placeholder="Enter your complete address for waste pickup...",
-            height=150
-        )
-        
-        phone = st.text_input("📞 Contact Number", placeholder="Your phone number")
-    
-    if st.button("📤 Submit Booking Request", use_container_width=True, type="primary"):
-        if address and phone:
-            booking_id = f"URX{len(st.session_state.waste_bookings) + 1001}"
-            
-            booking = {
-                'booking_id': booking_id,
-                'user': st.session_state.current_user,
-                'waste_type': waste_type,
-                'credits_earned': credits_earned,
-                'address': address,
-                'phone': phone,
-                'status': 'Pending',
-                'timestamp': datetime.datetime.now(),
-                'quantity_verified': None
-            }
-            
-            st.session_state.waste_bookings.append(booking)
-            user_data['bookings'].append(booking_id)
-            
-            st.success(f"✅ Booking successful! Your Booking ID: **{booking_id}**")
-            st.info("Admin will verify your waste and generate QR code. You can then scan it to claim credits!")
-            st.balloons()
-        else:
-            st.error("⚠️ Please provide address and phone number")
-    
-    # Show user bookings
-    st.markdown("---")
-    st.subheader("📋 Your Bookings")
-    
-    user_bookings = [b for b in st.session_state.waste_bookings if b['user'] == st.session_state.current_user]
-    
-    if user_bookings:
-        for booking in reversed(user_bookings):
-            status_emoji = "⏳" if booking['status'] == "Pending" else "✅" if booking['status'] == "Approved" else "🎉"
-            
-            with st.expander(f"{status_emoji} {booking['booking_id']} - {booking['waste_type']} - {booking['status']}"):
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    st.write(f"**Waste Type:** {booking['waste_type']}")
-                    st.write(f"**Credits:** ⭐ {booking['credits_earned']}")
-                    st.write(f"**Status:** {booking['status']}")
-                    st.write(f"**Date:** {booking['timestamp'].strftime('%d %b %Y, %I:%M %p')}")
-                
-                with col2:
-                    if booking['status'] == 'Approved' and booking['booking_id'] in st.session_state.qr_codes:
-                        st.write("**QR Code Generated! Scan below:**")
-                        qr_img = st.session_state.qr_codes[booking['booking_id']]
-                        st.image(qr_img, width=200)
-                        
-                        if st.button(f"📱 Scan & Claim Credits", key=f"claim_{booking['booking_id']}"):
-                            user_data['credits'] += booking['credits_earned']
-                            booking['status'] = 'Completed'
-                            
-                            # Add to daily credits
-                            st.session_state.daily_credits_data.append({
-                                'date': datetime.datetime.now().strftime('%Y-%m-%d'),
-                                'credits': booking['credits_earned']
-                            })
-                            
-                            st.success(f"🎉 {booking['credits_earned']} credits added to your wallet!")
-                            st.rerun()
-                    else:
-                        st.info("⏳ Waiting for admin verification")
-    else:
-        st.info("📭 No bookings yet. Submit your first waste collection request!")
-
-# ============================================
-# WALLET & WITHDRAWAL PAGE
-# ============================================
-
-def wallet_page():
-    """Wallet and withdrawal management"""
-    
-    st.title("💰 Wallet & Withdrawals")
-    
-    user_data = st.session_state.users[st.session_state.current_user]
-    credits = user_data['credits']
-    rupees = credits_to_rupees(credits)
-    
-    # Wallet overview
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.markdown("""
-        <div class='metric-card' style='background: linear-gradient(135deg, #4CAF50 0%, #2e7d32 100%); color: white;'>
-            <h2 style='color: white;'>⭐ Credits</h2>
-            <h1 style='color: white; margin: 10px 0;'>{}</h1>
-        </div>
-        """.format(credits), unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown("""
-        <div class='metric-card' style='background: linear-gradient(135deg, #FFC107 0%, #FFA000 100%); color: white;'>
-            <h2 style='color: white;'>💵 Rupees</h2>
-            <h1 style='color: white; margin: 10px 0;'>₹{}</h1>
-        </div>
-        """.format(rupees), unsafe_allow_html=True)
-    
-    with col3:
-        withdrawal_status = "✅ Available" if credits >= 500 else "🔒 Locked"
-        st.markdown("""
+        st.markdown(f"""
         <div class='metric-card'>
-            <h2>🎯 Status</h2>
-            <h1 style='margin: 10px 0;'>{}</h1>
+            <h2>{user['manure_purchased']}</h2>
+            <p>URAM Count</p>
         </div>
-        """.format(withdrawal_status), unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
     
     st.markdown("---")
     
-    # Conversion info
-    st.info("""
-    💡 **Credit System:**
-    - 1 credit = ₹0.05
-    - 20 credits = ₹1
-    - Minimum withdrawal: 500 credits (₹25)
-    """)
+    # Withdrawal Section
+    st.subheader("💰 Withdraw Credits")
     
-    # Withdrawal section
-    st.subheader("💸 Withdraw Money")
-    
-    if credits >= 500:
-        st.success("✅ You can withdraw money now!")
+    if user['credits'] >= 500:
+        withdraw_amount = st.number_input("Credits to Withdraw", min_value=500, max_value=user['credits'], step=100)
+        rupees_withdraw = withdraw_amount * 0.05
+        st.info(f"You will receive: ₹{rupees_withdraw:.2f}")
         
-        col1, col2 = st.columns([2, 1])
-        
-        with col1:
-            credits_to_withdraw = st.number_input(
-                "Credits to Withdraw",
-                min_value=500,
-                max_value=credits,
-                step=100,
-                value=500
-            )
-            
-            withdrawal_amount = credits_to_rupees(credits_to_withdraw)
-            
-            st.write(f"**You will receive:** ₹{withdrawal_amount}")
-            
-            bank_name = st.text_input("Bank Name", placeholder="e.g., SBI, HDFC")
-            account_number = st.text_input("Account Number", placeholder="Enter account number")
-            
-            if st.button("💰 Withdraw to Bank", use_container_width=True, type="primary"):
-                if bank_name and account_number:
-                    user_data['credits'] -= credits_to_withdraw
-                    
-                    transaction = {
-                        'type': 'Withdrawal',
-                        'credits': credits_to_withdraw,
-                        'amount': withdrawal_amount,
-                        'bank': bank_name,
-                        'timestamp': datetime.datetime.now()
-                    }
-                    user_data['transactions'].append(transaction)
-                    
-                    st.success(f"✅ ₹{withdrawal_amount} withdrawn successfully!")
-                    st.balloons()
-                    st.rerun()
-                else:
-                    st.error("Please provide bank details")
-        
-        with col2:
-            # Progress bar
-            st.write("**Withdrawal Progress:**")
-            progress = min(credits / 500, 1.0)
-            st.progress(progress)
-            st.write(f"{int(progress * 100)}% eligible")
+        if st.button("Withdraw"):
+            user['credits'] -= withdraw_amount
+            st.success(f"✅ Successfully withdrawn ₹{rupees_withdraw:.2f}!")
+            st.rerun()
     else:
-        remaining = 500 - credits
-        st.warning(f"⚠️ You need {remaining} more credits to withdraw")
-        
-        progress = credits / 500
-        st.progress(progress)
-        st.write(f"Progress: {int(progress * 100)}%")
+        st.warning(f"⚠️ You need at least 500 credits to withdraw. Current: {user['credits']} credits")
     
-    # Transaction history
     st.markdown("---")
-    st.subheader("📜 Transaction History")
     
-    if user_data.get('transactions'):
-        for trans in reversed(user_data['transactions']):
-            with st.expander(f"💳 {trans['type']} - {trans['timestamp'].strftime('%d %b %Y')}"):
-                st.write(f"**Credits:** {trans['credits']}")
-                st.write(f"**Amount:** ₹{trans['amount']}")
-                if 'bank' in trans:
-                    st.write(f"**Bank:** {trans['bank']}")
+    # Recent Activity
+    st.subheader("📜 Recent Waste Submissions")
+    if user['waste_submissions']:
+        df = pd.DataFrame(user['waste_submissions'])
+        st.dataframe(df, use_container_width=True)
     else:
-        st.info("No transactions yet")
+        st.info("No submissions yet. Start submitting waste to earn credits!")
 
-# ============================================
-# MANURE MARKETPLACE 
-# ============================================
-
-def manure_marketplace():
-    """Manure marketplace"""
+# Waste Submission Page
+def waste_submission_page():
+    st.title("♻️ Submit Waste")
     
-    st.title("🌾 Natural Manure Store")
-    
-    user_data = st.session_state.users[st.session_state.current_user]
-    
-    # User wallet display
-    rupees = credits_to_rupees(user_data['credits'])
-    
-    st.markdown(f"""
-    <div class='wallet-display'>
-        <h3>💰 Your Wallet: ₹{rupees} ({user_data['credits']} credits)</h3>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("---")
-    
-    # Product showcase (Flipkart style)
-    st.subheader("🛒 Available Products")
-    
-    col1, col2, col3 = st.columns([1, 1, 1])
-    
-    # Product 1: Organic Manure
-    with col1:
-        st.markdown("""
-        <div class='product-card'>
-            <div style='text-align: center;'>
-                <h3 style='color: #2e7d32;'>🌿 Organic Manure</h3>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.image("https://via.placeholder.com/300x200/8BC34A/FFFFFF?text=Organic+Manure", use_container_width=True)
-        st.write("**Premium Quality Organic Fertilizer**")
-        st.write(f"💰 **Price:** ₹{st.session_state.manure_price}/kg")
-        st.write(f"📦 **Available:** {st.session_state.manure_stock} kg")
-        
-        qty1 = st.number_input("Quantity (kg)", min_value=1, max_value=50, value=10, key="qty1")
-        total1 = qty1 * st.session_state.manure_price
-        
-        st.write(f"**Total:** ₹{total1}")
-        
-        if st.button("🛍️ Buy Now", key="buy1", use_container_width=True):
-            if rupees >= total1:
-                if st.session_state.manure_stock >= qty1:
-                    # Deduct money (convert rupees to credits)
-                    credits_to_deduct = rupees_to_credits(total1)
-                    user_data['credits'] -= credits_to_deduct
-                    user_data['uram_count'] += qty1
-                    
-                    # Update stock
-                    st.session_state.manure_stock -= qty1
-                    
-                    # Record sale
-                    st.session_state.manure_sales.append({
-                        'user': st.session_state.current_user,
-                        'quantity': qty1,
-                        'amount': total1,
-                        'timestamp': datetime.datetime.now()
-                    })
-                    
-                    st.success(f"✅ Purchased {qty1} kg manure! URAM Count: {user_data['uram_count']}")
-                    st.balloons()
-                    st.rerun()
-                else:
-                    st.error("Insufficient stock")
-            else:
-                st.error("Insufficient balance. Earn more credits!")
-    
-    # Product 2: Premium Compost
-    with col2:
-        st.markdown("""
-        <div class='product-card'>
-            <div style='text-align: center;'>
-                <h3 style='color: #2e7d32;'>🌾 Premium Compost</h3>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.image("https://via.placeholder.com/300x200/689F38/FFFFFF?text=Premium+Compost", use_container_width=True)
-        st.write("**High-Grade Composted Fertilizer**")
-        premium_price = st.session_state.manure_price + 3
-        st.write(f"💰 **Price:** ₹{premium_price}/kg")
-        st.write(f"📦 **Available:** {int(st.session_state.manure_stock * 0.6)} kg")
-        
-        qty2 = st.number_input("Quantity (kg)", min_value=1, max_value=50, value=5, key="qty2")
-        total2 = qty2 * premium_price
-        
-        st.write(f"**Total:** ₹{total2}")
-        
-        if st.button("🛍️ Buy Now", key="buy2", use_container_width=True):
-            if rupees >= total2:
-                credits_to_deduct = rupees_to_credits(total2)
-                user_data['credits'] -= credits_to_deduct
-                user_data['uram_count'] += qty2
-                
-                st.session_state.manure_sales.append({
-                    'user': st.session_state.current_user,
-                    'quantity': qty2,
-                    'amount': total2,
-                    'timestamp': datetime.datetime.now()
-                })
-                
-                st.success(f"✅ Purchased {qty2} kg compost! URAM Count: {user_data['uram_count']}")
-                st.balloons()
-                st.rerun()
-            else:
-                st.error("Insufficient balance")
-    
-    # Product 3: Vermicompost
-    with col3:
-        st.markdown("""
-        <div class='product-card'>
-            <div style='text-align: center;'>
-                <h3 style='color: #2e7d32;'>🪱 Vermicompost</h3>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.image("https://via.placeholder.com/300x200/558B2F/FFFFFF?text=Vermicompost", use_container_width=True)
-        st.write("**Earthworm-Processed Organic Manure**")
-        vermi_price = st.session_state.manure_price + 5
-        st.write(f"💰 **Price:** ₹{vermi_price}/kg")
-        st.write(f"📦 **Available:** {int(st.session_state.manure_stock * 0.4)} kg")
-        
-        qty3 = st.number_input("Quantity (kg)", min_value=1, max_value=50, value=8, key="qty3")
-        total3 = qty3 * vermi_price
-        
-        st.write(f"**Total:** ₹{total3}")
-        
-        if st.button("🛍️ Buy Now", key="buy3", use_container_width=True):
-            if rupees >= total3:
-                credits_to_deduct = rupees_to_credits(total3)
-                user_data['credits'] -= credits_to_deduct
-                user_data['uram_count'] += qty3
-                
-                st.session_state.manure_sales.append({
-                    'user': st.session_state.current_user,
-                    'quantity': qty3,
-                    'amount': total3,
-                    'timestamp': datetime.datetime.now()
-                })
-                
-                st.success(f"✅ Purchased {qty3} kg vermicompost! URAM Count: {user_data['uram_count']}")
-                st.balloons()
-                st.rerun()
-            else:
-                st.error("Insufficient balance")
-    
-    # User's URAM Count
-    st.markdown("---")
-    st.subheader("📊 Your URAM Count")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric("🌾 Total Manure Purchased", f"{user_data['uram_count']} kg")
-    
-    with col2:
-        st.metric("💰 Wallet Balance", f"₹{rupees}")
-    
-    with col3:
-        st.metric("⭐ Available Credits", user_data['credits'])
-
-# ============================================
-# FEEDBACK PAGE
-# ============================================
-
-def feedback_page():
-    """User feedback submission"""
-    
-    st.title("📝 Feedback & Support")
-    
-    st.write("Help us improve URAMix! Share your thoughts and suggestions.")
+    # Animated Dustbin Fill Simulator
+    st.markdown("### 🗑️ Dustbin Fill Level Simulator")
+    st.markdown('<div class="dustbin-container">', unsafe_allow_html=True)
     
     col1, col2 = st.columns([2, 1])
     
     with col1:
-        feedback_text = st.text_area(
-            "Your Feedback",
-            placeholder="Tell us about your experience, suggestions, or report issues...",
-            height=200
+        fill_level = st.slider(
+            "Adjust Dustbin Fill Level (%)", 
+            min_value=0, 
+            max_value=100, 
+            value=st.session_state.dustbin_fill_level,
+            key="dustbin_slider"
         )
+        st.session_state.dustbin_fill_level = fill_level
         
-        rating = st.slider("Rate your experience", 1, 5, 5, help="1 = Poor, 5 = Excellent")
+        # Visual dustbin representation
+        dustbin_height = 300
+        fill_height = int(dustbin_height * fill_level / 100)
         
-        if st.button("📤 Submit Feedback", use_container_width=True, type="primary"):
-            if feedback_text:
-                success = send_feedback_email(st.session_state.current_user, feedback_text)
-                
-                if success:
-                    st.success("✅ Thank you for your feedback! Admin will review it soon.")
-                    st.balloons()
-                else:
-                    st.error("Failed to send feedback. Please try again.")
-            else:
-                st.error("Please enter your feedback")
+        st.markdown(f"""
+        <div style='background: #e0e0e0; width: 200px; height: {dustbin_height}px; 
+                    border-radius: 10px; margin: 20px auto; position: relative; 
+                    border: 3px solid #666; overflow: hidden;'>
+            <div style='position: absolute; bottom: 0; width: 100%; height: {fill_height}px;
+                        background: linear-gradient(to top, #4caf50 0%, #81c784 100%);
+                        border-radius: 0 0 8px 8px; transition: height 0.5s ease;'>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if fill_level >= 80:
+            st.error("🚨 Dustbin is nearly full! Please request collection.")
+        elif fill_level >= 50:
+            st.warning("⚠️ Dustbin is half full.")
+        else:
+            st.success("✅ Dustbin has space available.")
     
     with col2:
-        st.info("""
-        **Contact Information:**
+        st.metric("Fill Status", f"{fill_level}%")
+        st.metric("Remaining Space", f"{100-fill_level}%")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("---")
+    
+    # Waste Submission Form
+    st.subheader("📦 Submit Your Waste")
+    
+    waste_type = st.selectbox("Select Waste Type", ["Organic Waste", "Inorganic Waste"])
+    
+    st.info(f"""
+    **Credit Information:**
+    - Organic Waste: Higher credits (50+ credits)
+    - Inorganic Waste: Standard credits (30+ credits)
+    - Referral Bonus: +20 credits (one-time)
+    """)
+    
+    if st.button("Submit Waste Request"):
+        # Generate unique QR code
+        qr_data = f"{st.session_state.current_user}_{waste_type}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        qr_img = generate_qr_code(qr_data)
         
-        📧 **Email:** 
-        support@uramix.com
+        st.session_state.qr_codes[qr_data] = {
+            'user': st.session_state.current_user,
+            'waste_type': waste_type,
+            'verified': False,
+            'quantity': 0
+        }
         
-        📞 **Phone:** 
-        +91-8438386610
-        
-        ⏰ **Hours:** 
-        24/7 Support
-        
-        📍 **Address:** 
-        Clean India Initiative
-        New Delhi, India
-        """)
+        st.success("✅ Waste submission request created! Show this QR code to the collection staff.")
+        st.image(f"data:image/png;base64,{qr_img}", width=300)
+        st.code(qr_data)
+    
+    # Referral Section
+    st.markdown("---")
+    st.subheader("🎁 Referral Bonus")
+    user = st.session_state.users[st.session_state.current_user]
+    
+    if not user['referral_used']:
+        referral_code = st.text_input("Enter Referral Code (if any)")
+        if st.button("Apply Referral"):
+            if referral_code:
+                user['credits'] += 20
+                user['referral_used'] = True
+                st.success("🎉 Referral bonus of 20 credits added!")
+                st.rerun()
+    else:
+        st.info("✅ Referral bonus already claimed!")
 
-# ============================================
-# ADMIN DASHBOARD
-# ============================================
-
-def admin_dashboard():
-    """Complete admin dashboard"""
+# Manure Marketplace Page
+def manure_page():
+    st.title("🌿 URAM Manure Marketplace")
     
-    st.title("👨‍💼 Admin Dashboard")
+    st.markdown("""
+    <div style='background: linear-gradient(135deg, #8bc34a 0%, #689f38 100%); 
+                padding: 20px; border-radius: 15px; color: white; margin-bottom: 30px;'>
+        <h3>🌾 Premium Natural Manure - Made from YOUR Waste!</h3>
+        <p>Affordable, eco-friendly, and supports Indian farmers</p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # Overview metrics
-    st.subheader("📊 Platform Overview")
+    # Display available stock
+    col1, col2, col3 = st.columns(3)
     
-    col1, col2, col3, col4 = st.columns(4)
-    
-    total_users = len(st.session_state.users)
-    total_bookings = len(st.session_state.waste_bookings)
-    pending_bookings = len([b for b in st.session_state.waste_bookings if b['status'] == 'Pending'])
-    total_credits = sum([u.get('credits', 0) for u in st.session_state.users.values()])
-    
-    col1.metric("👥 Total Users", total_users)
-    col2.metric("📦 Total Bookings", total_bookings)
-    col3.metric("⏳ Pending", pending_bookings)
-    col4.metric("⭐ Credits Issued", total_credits)
+    with col1:
+        st.metric("Available Stock", f"{st.session_state.total_manure} kg")
+    with col2:
+        st.metric("Price per kg", f"₹{st.session_state.manure_price}")
+    with col3:
+        user = st.session_state.users[st.session_state.current_user]
+        st.metric("Your URAM Count", f"{user['manure_purchased']} kg")
     
     st.markdown("---")
     
-    # Tabs
-    tab1, tab2, tab3, tab4 = st.tabs(["🗑️ Manage Bookings", "📈 Analytics", "🌾 Manure Management", "💬 Feedback"])
+    # Product Card
+    col_left, col_center, col_right = st.columns([1, 2, 1])
+    
+    with col_center:
+        st.markdown("""
+        <div class='product-card'>
+            <img src='https://via.placeholder.com/300x200/8bc34a/ffffff?text=Natural+Manure' 
+                 style='width: 100%; border-radius: 10px;'>
+            <h2 style='color: #28a745; margin: 20px 0;'>🌿 URAM Natural Manure</h2>
+            <p style='color: #666; font-size: 1.1em;'>Premium quality organic manure</p>
+            <h3 style='color: #28a745;'>₹{} per kg</h3>
+        </div>
+        """.format(st.session_state.manure_price), unsafe_allow_html=True)
+        
+        if st.session_state.total_manure > 0:
+            max_qty = min(st.session_state.total_manure, 100)
+            quantity = st.number_input(
+                "Quantity (in kg)", 
+                min_value=1, 
+                max_value=max_qty,
+                value=1,
+                step=1
+            )
+            
+            total_price = quantity * st.session_state.manure_price
+            st.info(f"Total Price: ₹{total_price}")
+            
+            if st.button("🛒 Buy Now", use_container_width=True):
+                if st.session_state.total_manure >= quantity:
+                    st.session_state.total_manure -= quantity
+                    user['manure_purchased'] += quantity
+                    
+                    # Record sale
+                    st.session_state.manure_sales.append({
+                        'date': datetime.now().strftime('%Y-%m-%d'),
+                        'user': st.session_state.current_user,
+                        'quantity': quantity,
+                        'amount': total_price
+                    })
+                    
+                    st.success(f"✅ Successfully purchased {quantity} kg of URAM manure!")
+                    st.balloons()
+                    st.rerun()
+                else:
+                    st.error("❌ Insufficient stock!")
+        else:
+            st.warning("⚠️ Out of stock! Check back later.")
+
+# Feedback Page
+def feedback_page():
+    st.title("💬 Send Feedback")
+    
+    st.markdown("""
+    <div style='background: #e3f2fd; padding: 20px; border-radius: 10px; margin-bottom: 20px;'>
+        <h4>We value your feedback! 🌟</h4>
+        <p>Help us improve URAMix by sharing your thoughts and suggestions.</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    feedback_text = st.text_area("Your Feedback", height=200, placeholder="Share your experience, suggestions, or report issues...")
+    
+    if st.button("Submit Feedback", use_container_width=True):
+        if feedback_text:
+            feedback_entry = {
+                'user': st.session_state.current_user,
+                'feedback': feedback_text,
+                'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            }
+            st.session_state.feedbacks.append(feedback_entry)
+            
+            # Try to send email
+            email_sent = send_feedback_email(st.session_state.current_user, feedback_text)
+            
+            st.success("✅ Feedback submitted successfully!")
+            if email_sent:
+                st.info("📧 Email notification sent to admin.")
+            else:
+                st.info("📧 Email notification pending (configure SMTP settings).")
+        else:
+            st.error("❌ Please enter feedback before submitting.")
+
+# Admin Dashboard
+def admin_dashboard():
+    st.title("🔧 Admin Dashboard")
+    
+    # Metrics
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("Total Users", len(st.session_state.users))
+    with col2:
+        st.metric("Credits Issued", st.session_state.total_credits_issued)
+    with col3:
+        st.metric("Manure Stock", f"{st.session_state.total_manure} kg")
+    with col4:
+        total_sales = sum([sale['amount'] for sale in st.session_state.manure_sales])
+        st.metric("Total Sales", f"₹{total_sales}")
+    
+    st.markdown("---")
+    
+    # Tabs for different admin functions
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "QR Verification", "Manure Management", "Analytics", "Feedbacks", "Users"
+    ])
     
     with tab1:
-        st.subheader("Waste Collection Bookings")
+        st.subheader("📱 QR Code Verification")
         
-        # Pending bookings
-        st.markdown("### ⏳ Pending Verification")
+        qr_code_input = st.text_input("Enter QR Code Data")
         
-        pending = [b for b in st.session_state.waste_bookings if b['status'] == 'Pending']
-        
-        if pending:
-            for booking in pending:
-                with st.expander(f"📋 {booking['booking_id']} - {booking['waste_type']} ({booking['user']})"):
-                    col1, col2 = st.columns([1, 1])
+        if st.button("Verify QR"):
+            if qr_code_input in st.session_state.qr_codes:
+                qr_info = st.session_state.qr_codes[qr_code_input]
+                
+                if not qr_info['verified']:
+                    st.success(f"✅ Valid QR Code - User: {qr_info['user']}, Type: {qr_info['waste_type']}")
                     
-                    with col1:
-                        st.write(f"**User:** {booking['user']}")
-                        st.write(f"**Waste Type:** {booking['waste_type']}")
-                        st.write(f"**Credits to Award:** ⭐ {booking['credits_earned']}")
-                        st.write(f"**Phone:** {booking['phone']}")
-                        st.write(f"**Address:** {booking['address']}")
-                        st.write(f"**Requested:** {booking['timestamp'].strftime('%d %b %Y, %I:%M %p')}")
+                    quantity = st.number_input("Enter Verified Quantity (kg)", min_value=0.5, value=5.0, step=0.5)
                     
-                    with col2:
-                        quantity_verified = st.number_input(
-                            "Verified Quantity (kg)",
-                            min_value=1,
-                            max_value=100,
-                            value=10,
-                            key=f"qty_{booking['booking_id']}"
-                        )
+                    if st.button("Confirm & Issue Credits"):
+                        # Calculate credits
+                        credits = calculate_credits(qr_info['waste_type'], quantity)
                         
-                        st.info(f"**Credits:** {booking['credits_earned']}")
+                        # Add credits to user
+                        user = st.session_state.users[qr_info['user']]
+                        user['credits'] += credits
+                        user['waste_submissions'].append({
+                            'date': datetime.now().strftime('%Y-%m-%d'),
+                            'type': qr_info['waste_type'],
+                            'quantity': quantity,
+                            'credits': credits
+                        })
                         
-                        if st.button(f"✅ Approve & Generate QR", key=f"approve_{booking['booking_id']}"):
-                            # Update booking
-                            booking['status'] = 'Approved'
-                            booking['quantity_verified'] = quantity_verified
-                            
-                            # Generate QR code
-                            qr_img = generate_qr_code(
-                                booking['booking_id'],
-                                booking['waste_type'],
-                                booking['credits_earned']
-                            )
-                            st.session_state.qr_codes[booking['booking_id']] = qr_img
-                            
-                            st.success(f"✅ Booking {booking['booking_id']} approved!")
-                            st.rerun()
-        else:
-            st.info("No pending bookings")
-        
-        # Approved bookings
-        st.markdown("---")
-        st.markdown("### ✅ Approved Bookings")
-        
-        approved = [b for b in st.session_state.waste_bookings if b['status'] == 'Approved']
-        
-        if approved:
-            for booking in approved:
-                with st.expander(f"✅ {booking['booking_id']} - {booking['waste_type']}"):
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        st.write(f"**User:** {booking['user']}")
-                        st.write(f"**Verified Qty:** {booking['quantity_verified']} kg")
-                        st.write(f"**Credits:** {booking['credits_earned']}")
-                    
-                    with col2:
-                        if booking['booking_id'] in st.session_state.qr_codes:
-                            st.write("**QR Code:**")
-                            st.image(st.session_state.qr_codes[booking['booking_id']], width=150)
-        else:
-            st.info("No approved bookings yet")
+                        # Update QR status
+                        qr_info['verified'] = True
+                        qr_info['quantity'] = quantity
+                        
+                        # Update total credits
+                        st.session_state.total_credits_issued += credits
+                        
+                        # Track daily credits
+                        today = datetime.now().strftime('%Y-%m-%d')
+                        if today not in st.session_state.daily_credits:
+                            st.session_state.daily_credits[today] = 0
+                        st.session_state.daily_credits[today] += credits
+                        
+                        st.success(f"✅ {credits} credits issued to {qr_info['user']}!")
+                        st.balloons()
+                else:
+                    st.warning("⚠️ This QR code has already been verified.")
+            else:
+                st.error("❌ Invalid QR code!")
     
     with tab2:
-        st.subheader("📈 Platform Analytics")
+        st.subheader("🌿 Manure Stock Management")
         
-        # Credits chart
-        if st.session_state.daily_credits_data:
-            st.markdown("### Daily Credits Distribution")
-            
-            df = pd.DataFrame(st.session_state.daily_credits_data)
-            df_grouped = df.groupby('date')['credits'].sum().reset_index()
-            
-            fig, ax = plt.subplots(figsize=(10, 5))
-            ax.bar(df_grouped['date'], df_grouped['credits'], color='#4CAF50', alpha=0.8)
-            ax.set_xlabel('Date', fontsize=12)
-            ax.set_ylabel('Credits Issued', fontsize=12)
-            ax.set_title('Daily Credits Distribution', fontsize=14, fontweight='bold')
-            plt.xticks(rotation=45)
-            plt.tight_layout()
-            st.pyplot(fig)
-        else:
-            st.info("No credit data available yet")
+        col_a, col_b = st.columns(2)
         
-        # Waste type distribution
-        st.markdown("---")
-        st.markdown("### Waste Type Distribution")
-        
-        organic_count = len([b for b in st.session_state.waste_bookings if b['waste_type'] == 'Organic'])
-        inorganic_count = len([b for b in st.session_state.waste_bookings if b['waste_type'] == 'Inorganic'])
-        
-        if organic_count + inorganic_count > 0:
-            fig, ax = plt.subplots(figsize=(8, 6))
-            ax.pie(
-                [organic_count, inorganic_count],
-                labels=['Organic', 'Inorganic'],
-                colors=['#8BC34A', '#FFC107'],
-                autopct='%1.1f%%',
-                startangle=90,
-                textprops={'fontsize': 12, 'fontweight': 'bold'}
-            )
-            ax.set_title('Waste Segregation Analysis', fontsize=14, fontweight='bold')
-            st.pyplot(fig)
-        else:
-            st.info("No waste data available")
-        
-        # Manure sales chart
-        if st.session_state.manure_sales:
-            st.markdown("---")
-            st.markdown("### Manure Sales Analytics")
-            
-            sales_df = pd.DataFrame(st.session_state.manure_sales)
-            
-            fig, ax = plt.subplots(figsize=(10, 5))
-            ax.plot(range(len(sales_df)), sales_df['quantity'].cumsum(), marker='o', color='#8BC34A', linewidth=2)
-            ax.set_xlabel('Transaction', fontsize=12)
-            ax.set_ylabel('Cumulative Quantity (kg)', fontsize=12)
-            ax.set_title('Manure Sales Trend', fontsize=14, fontweight='bold')
-            ax.grid(alpha=0.3)
-            plt.tight_layout()
-            st.pyplot(fig)
-    
-    with tab3:
-        st.subheader("🌾 Manure Stock Management")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("### 📦 Stock Control")
-            
-            st.metric("Current Stock (URAM Count)", f"{st.session_state.manure_stock} kg")
-            
-            add_stock = st.number_input("Add Stock (kg)", min_value=0, max_value=2000, value=100)
-            
-            if st.button("➕ Add Stock", use_container_width=True):
-                st.session_state.manure_stock += add_stock
+        with col_a:
+            add_stock = st.number_input("Add Stock (kg)", min_value=0, value=100, step=10)
+            if st.button("Add Stock"):
+                st.session_state.total_manure += add_stock
                 st.success(f"✅ Added {add_stock} kg to stock!")
                 st.rerun()
         
-        with col2:
-            st.markdown("### 💰 Pricing Control")
-            
-            st.metric("Current Price", f"₹{st.session_state.manure_price}/kg")
-            
-            new_price = st.number_input(
-                "Update Price (₹/kg)",
-                min_value=5,
-                max_value=50,
-                value=st.session_state.manure_price
-            )
-            
-            if st.button("💰 Update Price", use_container_width=True):
+        with col_b:
+            new_price = st.number_input("Set Price per kg (₹)", min_value=10, value=st.session_state.manure_price, step=5)
+            if st.button("Update Price"):
                 st.session_state.manure_price = new_price
                 st.success(f"✅ Price updated to ₹{new_price}/kg!")
                 st.rerun()
         
-        # Sales summary
         st.markdown("---")
-        st.markdown("### 📊 Sales Summary")
-        
+        st.subheader("📊 Manure Sales History")
         if st.session_state.manure_sales:
-            total_sold = sum([s['quantity'] for s in st.session_state.manure_sales])
-            total_revenue = sum([s['amount'] for s in st.session_state.manure_sales])
-            
-            col1, col2, col3 = st.columns(3)
-            col1.metric("🌾 Total Sold", f"{total_sold} kg")
-            col2.metric("💰 Revenue", f"₹{total_revenue}")
-            col3.metric("📦 Transactions", len(st.session_state.manure_sales))
+            df_sales = pd.DataFrame(st.session_state.manure_sales)
+            st.dataframe(df_sales, use_container_width=True)
         else:
-            st.info("No sales data yet")
+            st.info("No sales recorded yet.")
+    
+    with tab3:
+        st.subheader("📈 Analytics")
+        
+        # Daily Credits Chart
+        if st.session_state.daily_credits:
+            st.markdown("#### Daily Credits Issued")
+            dates = list(st.session_state.daily_credits.keys())
+            credits = list(st.session_state.daily_credits.values())
+            
+            fig, ax = plt.subplots(figsize=(10, 5))
+            ax.bar(dates, credits, color='#28a745')
+            ax.set_xlabel('Date')
+            ax.set_ylabel('Credits')
+            ax.set_title('Daily Credits Distribution')
+            plt.xticks(rotation=45)
+            st.pyplot(fig)
+        else:
+            st.info("No credit data available yet.")
+        
+        st.markdown("---")
+        
+        # Manure Sales Chart
+        if st.session_state.manure_sales:
+            st.markdown("#### Manure Sales Analytics")
+            df_sales = pd.DataFrame(st.session_state.manure_sales)
+            sales_by_date = df_sales.groupby('date')['quantity'].sum()
+            
+            fig2, ax2 = plt.subplots(figsize=(10, 5))
+            ax2.plot(sales_by_date.index, sales_by_date.values, marker='o', color='#8bc34a', linewidth=2)
+            ax2.set_xlabel('Date')
+            ax2.set_ylabel('Quantity (kg)')
+            ax2.set_title('Manure Sales Over Time')
+            plt.xticks(rotation=45)
+            st.pyplot(fig2)
     
     with tab4:
-        st.subheader("💬 User Feedback")
+        st.subheader("💬 User Feedbacks")
         
-        if st.session_state.feedback_list:
-            for idx, feedback in enumerate(reversed(st.session_state.feedback_list)):
-                with st.expander(f"📧 {feedback['email']} - {feedback['timestamp'].strftime('%d %b %Y, %I:%M %p')}"):
-                    st.write(f"**Rating:** {'⭐' * feedback.get('rating', 5)}")
-                    st.write(f"**Feedback:**")
-                    st.write(feedback['feedback'])
-                    
-                    if st.button(f"✅ Mark as Reviewed", key=f"review_{idx}"):
-                        st.success("Feedback marked as reviewed")
+        if st.session_state.feedbacks:
+            for feedback in reversed(st.session_state.feedbacks):
+                st.markdown(f"""
+                <div style='background: white; padding: 15px; border-radius: 10px; 
+                            margin: 10px 0; border-left: 4px solid #28a745;'>
+                    <strong>👤 {feedback['user']}</strong><br>
+                    <small>📅 {feedback['date']}</small><br>
+                    <p style='margin-top: 10px;'>{feedback['feedback']}</p>
+                </div>
+                """, unsafe_allow_html=True)
         else:
-            st.info("No feedback received yet")
+            st.info("No feedbacks received yet.")
+    
+    with tab5:
+        st.subheader("👥 Registered Users")
+        
+        if st.session_state.users:
+            users_data = []
+            for email, data in st.session_state.users.items():
+                users_data.append({
+                    'Email': email,
+                    'Credits': data['credits'],
+                    'Submissions': len(data['waste_submissions']),
+                    'Manure Purchased': data['manure_purchased']
+                })
+            
+            df_users = pd.DataFrame(users_data)
+            st.dataframe(df_users, use_container_width=True)
+        else:
+            st.info("No users registered yet.")
 
-# ============================================
-# MAIN APPLICATION
-# ============================================
-
+# Main App
 def main():
-    """Main application controller"""
-    
-    # Check if logged in
-    if not st.session_state.logged_in:
-        login_signup_page()
-        return
-    
     # Sidebar
     with st.sidebar:
-        st.markdown("### 🌱 URAMix")
-        st.markdown("**Waste to Value**")
-        st.markdown("---")
+        st.markdown("### ♻️ URAMix Navigation")
         
-        if st.session_state.is_admin:
-            st.markdown("**👨‍💼 Admin Panel**")
-            page = st.radio(
-                "Navigation",
-                ["📊 Dashboard"],
-                label_visibility="collapsed"
-            )
+        if st.session_state.logged_in:
+            if st.session_state.is_admin:
+                st.success("🔧 Admin Mode")
+                page = st.radio("Go to", ["Admin Dashboard"], label_visibility="collapsed")
+            else:
+                st.success(f"👤 {st.session_state.current_user}")
+                page = st.radio(
+                    "Go to",
+                    ["Home", "Dashboard", "Submit Waste", "Buy Manure", "Feedback"]
+                )
+            
+            st.markdown("---")
+            if st.button("🚪 Logout", use_container_width=True):
+                logout()
+                st.rerun()
         else:
-            user_data = st.session_state.users[st.session_state.current_user]
-            
-            st.markdown(f"**User:** {st.session_state.current_user}")
-            st.markdown("---")
-            
-            # Quick stats
-            st.metric("⭐ Credits", user_data['credits'])
-            st.metric("💰 Rupees", f"₹{credits_to_rupees(user_data['credits'])}")
-            st.metric("🌾 URAM Count", user_data['uram_count'])
-            
-            st.markdown("---")
-            
-            page = st.radio(
-                "Navigation",
-                [
-                    "🏠 Home",
-                    "♻️ Submit Waste",
-                    "💰 Wallet",
-                    "🛒 Manure Store",
-                    "📝 Feedback"
-                ],
-                label_visibility="collapsed"
-            )
-        
-        st.markdown("---")
-        
-        if st.button("🚪 Logout", use_container_width=True):
-            logout_user()
-            st.rerun()
-        
-        # Footer
-        st.markdown("---")
-        st.markdown("""
-        <div style='text-align: center; font-size: 11px; color: #666;'>
-            <p>🌍 Clean India Initiative</p>
-            <p>♻️ Circular Economy</p>
-            <p style='margin-top: 10px;'>© 2024 URAMix</p>
-        </div>
-        """, unsafe_allow_html=True)
+            st.info("Please login to continue")
+            page = "Login"
     
-    # Route to pages
-    if st.session_state.is_admin:
-        admin_dashboard()
+    # Page Routing
+    if not st.session_state.logged_in:
+        auth_page()
     else:
-        if page == "🏠 Home":
-            home_page()
-        elif page == "♻️ Submit Waste":
-            waste_submission_page()
-        elif page == "💰 Wallet":
-            wallet_page()
-        elif page == "🛒 Manure Store":
-            manure_marketplace()
-        elif page == "📝 Feedback":
-            feedback_page()
+        if st.session_state.is_admin:
+            admin_dashboard()
+        else:
+            if page == "Home":
+                home_page()
+            elif page == "Dashboard":
+                dashboard_page()
+            elif page == "Submit Waste":
+                waste_submission_page()
+            elif page == "Buy Manure":
+                manure_page()
+            elif page == "Feedback":
+                feedback_page()
 
-# Run the application
 if __name__ == "__main__":
     main()

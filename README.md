@@ -459,7 +459,7 @@ This is a hackathon-ready project. Feel free to:
 ## 📧 Support & Contact
 
 **Email**: support@uramix.com  
-**Phone**: +91-XXXX-XXXXXX  
+**Phone**: +91-8438386610
 **Hours**: 24/7 Support  
 **Address**: Clean India Initiative, New Delhi
 
@@ -559,6 +559,4 @@ This project demonstrates:
 
 ---
 
-**Version**: 1.0.0  
-**Last Updated**: December 2024  
-**Status**: Production Ready ✅
+
